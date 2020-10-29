@@ -16,6 +16,7 @@
 # Lint as: python3
 """Tests for trax.supervised.inputs."""
 
+from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
@@ -126,6 +127,35 @@ class InputsTest(parameterized.TestCase):
     tensors4 = [np.zeros((2, 10)), np.ones((3, 9))]
     padded4 = data.inputs.pad_to_max_dims(tensors4, 12)
     self.assertEqual(padded4.shape, (2, 4, 12))
+
+  def test_truncate_to_len(self):
+    tensors1 = [[np.zeros((1, 5)), np.ones((1, 5))]]
+
+    truncated1 = next(data.inputs.truncate_to_len(tensors1))
+    self.assertEqual(truncated1[0].shape, (1, 5))
+    self.assertEqual(truncated1[1].shape, (1, 5))
+
+    truncated2 = next(data.inputs.truncate_to_len(tensors1, {0: (1, 3),
+                                                             1: (1, 2)}))
+    self.assertEqual(truncated2[0].shape, (1, 3))
+    self.assertEqual(truncated2[1].shape, (1, 2))
+
+  def test_append_value(self):
+    tensors1 = [[np.zeros((1, 5)), np.ones((1, 5))]]
+
+    unmodified = next(data.inputs.append_value(tensors1))
+    self.assertEqual(unmodified[0].shape, (1, 5))
+    self.assertEqual(unmodified[1].shape, (1, 5))
+
+    appended = next(data.inputs.append_value(tensors1, {0: [[5]],
+                                                        1: [[4]]}))
+    logging.info(str(appended))
+    self.assertEqual(appended[0].shape, (1, 6))
+    self.assertEqual(appended[0].all(),
+                     np.array([[0., 0., 0., 0., 0., 5.]]).all())
+    self.assertEqual(appended[1].shape, (1, 6))
+    self.assertEqual(appended[1].all(),
+                     np.array([[1., 1., 1., 1., 1., 4.]]).all())
 
   def test_pad_to_max_dims_boundary_list(self):
     tensors = [np.zeros((1, 15, 31)), np.ones((2, 10, 35)), np.ones((4, 2, 3))]
